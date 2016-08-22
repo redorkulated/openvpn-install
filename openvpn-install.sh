@@ -133,17 +133,11 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 				PORT=$(grep '^port ' /etc/openvpn/server.conf | cut -d " " -f 2)
 				if pgrep firewalld; then
 					# Using both permanent and not permanent rules to avoid a firewalld reload.
-					firewall-cmd --zone=public --remove-port=$PORT/udp
-					firewall-cmd --zone=trusted --remove-source=10.8.0.0/24
-					firewall-cmd --permanent --zone=public --remove-port=$PORT/udp
-					firewall-cmd --permanent --zone=trusted --remove-source=10.8.0.0/24
+					echo "firewall-cmd --zone=public --remove-port=$PORT/udp"
+					echo "firewall-cmd --zone=trusted --remove-source=10.8.0.0/24"
+					echo "firewall-cmd --permanent --zone=public --remove-port=$PORT/udp"
+					echo "firewall-cmd --permanent --zone=trusted --remove-source=10.8.0.0/24"
 				fi
-				if iptables -L -n | grep -qE 'REJECT|DROP'; then
-					sed -i "/iptables -I INPUT -p udp --dport $PORT -j ACCEPT/d" $RCLOCAL
-					sed -i "/iptables -I FORWARD -s 10.8.0.0\/24 -j ACCEPT/d" $RCLOCAL
-					sed -i "/iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT/d" $RCLOCAL
-				fi
-				sed -i '/iptables -t nat -A POSTROUTING -s 10.8.0.0\/24 -j SNAT --to /d' $RCLOCAL
 				if hash sestatus 2>/dev/null; then
 					if sestatus | grep "Current mode" | grep -qs "enforcing"; then
 						if [[ "$PORT" != '1194' ]]; then
@@ -299,28 +293,24 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	# Avoid an unneeded reboot
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	# Set NAT for the VPN subnet
-	iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP
-	sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL
+	echo "iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP"
 	if pgrep firewalld; then
 		# We don't use --add-service=openvpn because that would only work with
 		# the default port. Using both permanent and not permanent rules to
 		# avoid a firewalld reload.
-		firewall-cmd --zone=public --add-port=$PORT/udp
-		firewall-cmd --zone=trusted --add-source=10.8.0.0/24
-		firewall-cmd --permanent --zone=public --add-port=$PORT/udp
-		firewall-cmd --permanent --zone=trusted --add-source=10.8.0.0/24
+		echo "firewall-cmd --zone=public --add-port=$PORT/udp"
+		echo "firewall-cmd --zone=trusted --add-source=10.8.0.0/24"
+		echo "firewall-cmd --permanent --zone=public --add-port=$PORT/udp"
+		echo "firewall-cmd --permanent --zone=trusted --add-source=10.8.0.0/24"
 	fi
-	if iptables -L -n | grep -qE 'REJECT|DROP'; then
+	#if iptables -L -n | grep -qE 'REJECT|DROP'; then
 		# If iptables has at least one REJECT rule, we asume this is needed.
 		# Not the best approach but I can't think of other and this shouldn't
 		# cause problems.
-		iptables -I INPUT -p udp --dport $PORT -j ACCEPT
-		iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT
-		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-		sed -i "1 a\iptables -I INPUT -p udp --dport $PORT -j ACCEPT" $RCLOCAL
-		sed -i "1 a\iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT" $RCLOCAL
-		sed -i "1 a\iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL
-	fi
+		echo "iptables -I INPUT -p udp --dport $PORT -j ACCEPT"
+		echo "iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT"
+		echo "iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT"
+	#fi
 	# If SELinux is enabled and a custom port was selected, we need this
 	if hash sestatus 2>/dev/null; then
 		if sestatus | grep "Current mode" | grep -qs "enforcing"; then
